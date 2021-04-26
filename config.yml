@@ -1,0 +1,7 @@
+train_data: dataset/train.jsonl
+train_tables: dataset/train.tables.jsonl
+dev_data: dataset/dev.jsonl
+dev_tables: dataset/dev.tables.jsonl
+test_data: dataset/test.jsonl
+test_tables: dataset/test.tables.jsonl
+preprocessed_data_path: dataset/preprocessed.pickle
