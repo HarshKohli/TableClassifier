@@ -3,6 +3,7 @@
 
 import json
 import pickle
+import random
 from nltk import word_tokenize
 
 
@@ -64,6 +65,7 @@ def read_data(data_file, tables_file, real_proxy_token):
             header_tokens = cleanly_tokenize(header[col_no])
             one_table_data.append({'header': header_tokens, 'words': one_col_words})
         tables_data[table_id] = one_table_data
+    random.shuffle(samples_data)
     return samples_data, tables_data
 
 
