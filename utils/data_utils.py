@@ -11,9 +11,9 @@ from nltk import word_tokenize
 def create_batches(data, tables, batch_size):
     batches = [data[i * batch_size:(i + 1) * batch_size] for i in
                range((len(data) + batch_size - 1) // batch_size)]
-    questions, headers, table_words = [], [], []
+    questions, headers, table_words, labels = [], [], [], []
     for batch in batches:
-        question, header, words = [], [], []
+        question, header, words, label = [], [], [], []
         for datum in batch:
             question.append(datum['question_tokens'])
             table_info = tables[datum['table_id']]
@@ -23,10 +23,15 @@ def create_batches(data, tables, batch_size):
                 b.append(col['words'])
             header.append(a)
             words.append(b)
+            if datum['label'] == 0:
+                label.append([1, 0])
+            else:
+                label.append([0, 1])
+        labels.append(label)
         questions.append(question)
         headers.append(header)
         table_words.append(words)
-    return questions, headers, table_words
+    return questions, headers, table_words, labels
 
 
 def load_preprocessed_data(config):
