@@ -4,8 +4,11 @@ dev_data: dataset/dev.jsonl
 dev_tables: dataset/dev.tables.jsonl
 test_data: dataset/test.jsonl
 test_tables: dataset/test.tables.jsonl
-preprocessed_data_path: dataset/preprocessed.pickle
+preprocessed_data_path: preprocessed/all_data.pickle
 tf_hub_model: https://tfhub.dev/google/nnlm-en-dim128/2
 batch_size: 32
 real_proxy_token: <unk>
 num_epochs: 5
+train_index: preprocessed/train_ann_index.ann
+include_hardest_negatives: True
+include_random_negatives: True
