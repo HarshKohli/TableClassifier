@@ -6,9 +6,12 @@ test_data: dataset/test.jsonl
 test_tables: dataset/test.tables.jsonl
 preprocessed_data_path: preprocessed/all_data.pickle
 tf_hub_model: https://tfhub.dev/google/nnlm-en-dim128/2
-batch_size: 32
+batch_size: 256
 real_proxy_token: <unk>
-num_epochs: 5
+pad_token: <pad>
+num_epochs: 50
 train_index: preprocessed/train_ann_index.ann
 include_hardest_negatives: True
 include_random_negatives: True
+model_dir: saved_models
+model_name: test
