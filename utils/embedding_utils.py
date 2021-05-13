@@ -1,6 +1,7 @@
 # Author: Harsh Kohli
 # Date Created: 06-05-2021
 
+import os
 from annoy import AnnoyIndex
 
 
@@ -18,13 +19,15 @@ def compute_embeddings(text, nnlm_embedder, batch_size):
     return embeddings
 
 
-def index_embeddings(id2_embed, train_index):
-    dim = id2_embed[0].size
+def index_embeddings(id2_embed, index_file, dim):
     t = AnnoyIndex(dim, 'angular')
     for id, embedding in id2_embed.items():
         t.add_item(id, embedding)
     t.build(30)
-    t.save(train_index)
+    dir_name = os.path.dirname(index_file)
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    t.save(index_file)
 
 
 def get_hardest_negatives(samples_data, train_index, dim):

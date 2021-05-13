@@ -13,13 +13,13 @@ class QuerySchemaEncoder(Model):
         self.margin = config['contrastive_loss_margin']
 
         self.table_encoder_dense = tf.keras.models.Sequential()
-        self.table_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(256,)))
-        self.table_encoder_dense.add(tf.keras.layers.Dense(192, activation='relu'))
-        self.table_encoder_dense.add(tf.keras.layers.Dense(128, activation='relu'))
+        self.table_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(2 * config['dim'],)))
+        self.table_encoder_dense.add(tf.keras.layers.Dense(1.5 * config['dim'], activation='relu'))
+        self.table_encoder_dense.add(tf.keras.layers.Dense(config['dim'], activation='relu'))
 
         self.query_encoder_dense = tf.keras.models.Sequential()
-        self.query_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(128,)))
-        self.query_encoder_dense.add(tf.keras.layers.Dense(128, activation='relu'))
+        self.query_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(config['dim'],)))
+        self.query_encoder_dense.add(tf.keras.layers.Dense(config['dim'], activation='relu'))
 
     def call(self, features):
         questions, headers, table_words, labels, all_num_cols, masks = features
@@ -37,7 +37,7 @@ class QuerySchemaEncoder(Model):
         table_word_embeddings = self.nnlm_embedder(tf.reshape(table_words, [-1]))
         table_encodings = self.table_encoder_dense(tf.concat((header_embeddings, table_word_embeddings), axis=1))
         table_encodings = tf.reshape(table_encodings, [tf.shape(table_words)[0], tf.shape(table_words)[1], -1])
-        expanded_masks = tf.expand_dims(masks, -1)
+        expanded_masks = tf.dtypes.cast(tf.expand_dims(masks, -1), tf.float32)
         masks_broadcasted = tf.broadcast_to(expanded_masks,
                                             shape=[tf.shape(table_encodings)[0], tf.shape(table_encodings)[1],
                                                    tf.shape(table_encodings)[2]])
@@ -51,4 +51,3 @@ class QuerySchemaEncoder(Model):
     def get_query_embedding(self, questions):
         question_embeddings = self.nnlm_embedder(questions)
         return self.query_encoder_dense(question_embeddings)
-        #return question_embeddings
