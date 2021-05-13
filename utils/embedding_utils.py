@@ -46,3 +46,16 @@ def get_hardest_negatives(samples_data, train_index, dim):
                 hardest_negatives.append(hardest_negative)
                 break
     return hardest_negatives
+
+
+def get_query_table_ranks(sample_info_dict, id_to_index, index_file, dim):
+    u = AnnoyIndex(dim, 'angular')
+    u.load(index_file)
+    ranks = []
+    for sentence, info in sample_info_dict.items():
+        table_id, embedding = info['table_id'], info['embedding']
+        table_index = id_to_index[table_id]
+        closest_tables = u.get_nns_by_vector(embedding, 1000000)
+        rank = closest_tables.index(table_index) + 1
+        ranks.append(rank)
+    return ranks

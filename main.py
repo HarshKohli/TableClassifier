@@ -5,7 +5,7 @@ import yaml
 import tensorflow as tf
 import os
 from models import QuerySchemaEncoder
-from utils.training_utils import train_epoch, test_query_encoder, test_table_encoder
+from utils.training_utils import train_epoch, test_query_encoder, test_table_encoder, metrics_logger
 from utils.embedding_utils import index_embeddings
 from utils.data_utils import load_preprocessed_data
 
@@ -25,6 +25,8 @@ test_headers, test_table_words, test_all_num_cols, test_masks, test_table_ids = 
 model = QuerySchemaEncoder(config)
 optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
 save_path = os.path.join(config['model_dir'], model_name)
+log_path = os.path.join(config['log_dir'], model_name)
+dim = config['dim']
 
 
 @tf.function
@@ -46,8 +48,8 @@ def query_embedding_step(question):
 
 
 @tf.function
-def table_embedding_step(headers, table_words, all_num_cols, masks):
-    return model.get_table_embedding(headers, table_words, all_num_cols, masks)
+def table_embedding_step(header, table_word, all_num_col, mask):
+    return model.get_table_embedding(header, table_word, all_num_col, mask)
 
 
 train_iterations = len(questions)
@@ -58,15 +60,18 @@ for epoch_num in range(config['num_epochs']):
     print('Completed Epoch. Saving Latest Model...')
     tf.saved_model.save(model, os.path.join(save_path, str(epoch_num)))
 
+    index_dir = os.path.join(config['index_dir'], model_name, str(epoch_num))
+    train_index = os.path.join(index_dir, config['train_tables_index'])
+    dev_index = os.path.join(index_dir, config['dev_tables_index'])
+    test_index = os.path.join(index_dir, config['test_tables_index'])
+
     print('Computing In-Domain Query Embeddings...')
     indomain_sample_info_dict = test_query_encoder(data['in_domain_test_batches'], query_embedding_step)
     print('Computing Train Table Embeddings...')
     train_index_to_vec, train_id_to_index = test_table_encoder(train_headers, train_table_words, train_all_num_cols,
                                                                train_masks, train_table_ids, table_embedding_step)
     print('Indexing Train Table Embeddings...')
-    index_embeddings(train_index_to_vec,
-                     os.path.join(config['index_dir'], model_name, str(epoch_num), config['train_tables_index']),
-                     config['dim'])
+    index_embeddings(train_index_to_vec, train_index, dim)
 
     print('Computing Dev Query Embeddings...')
     dev_sample_info_dict = test_query_encoder(data['dev_samples_batches'], query_embedding_step)
@@ -74,9 +79,7 @@ for epoch_num in range(config['num_epochs']):
     dev_index_to_vec, dev_id_to_index = test_table_encoder(dev_headers, dev_table_words, dev_all_num_cols, dev_masks,
                                                            dev_table_ids, table_embedding_step)
     print('Indexing Dev Table Embeddings...')
-    index_embeddings(dev_index_to_vec,
-                     os.path.join(config['index_dir'], model_name, str(epoch_num), config['dev_tables_index']),
-                     config['dim'])
+    index_embeddings(dev_index_to_vec, dev_index, dim)
 
     print('Computing Test Query Embeddings...')
     test_sample_info_dict = test_query_encoder(data['test_samples_batches'], query_embedding_step)
@@ -84,8 +87,18 @@ for epoch_num in range(config['num_epochs']):
     test_index_to_vec, test_id_to_index = test_table_encoder(test_headers, test_table_words, test_all_num_cols,
                                                              test_masks, test_table_ids, table_embedding_step)
     print('Indexing Test Table Embeddings...')
-    index_embeddings(test_index_to_vec,
-                     os.path.join(config['index_dir'], model_name, str(epoch_num), config['test_tables_index']),
-                     config['dim'])
+    index_embeddings(test_index_to_vec, test_index, dim)
 
-    break
+    print('Logging Metrics...')
+    p_req = config['find_p']
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+    log_file = open(os.path.join(log_path, str(epoch_num) + '.tsv'), 'w', encoding='utf8')
+    log_file.write('Eval Set' + '\t' + 'MRR')
+    for p in p_req:
+        log_file.write('\tP@' + str(p))
+    log_file.write('\n')
+    metrics_logger(indomain_sample_info_dict, train_id_to_index, train_index, dim, 'in_domain_test', p_req, log_file)
+    metrics_logger(dev_sample_info_dict, dev_id_to_index, dev_index, dim, 'dev', p_req, log_file)
+    metrics_logger(test_sample_info_dict, test_id_to_index, test_index, dim, 'test', p_req, log_file)
+    log_file.close()

@@ -19,7 +19,9 @@ contrastive_loss_margin: 0.5
 learning_rate: 0.0001
 execute_greedily: False
 index_dir: ann_index
+log_dir: logs
 train_tables_index: train_tables.ann
 dev_tables_index: dev_tables.ann
 test_tables_index: test_tables.ann
 dim: 500
+find_p: [1, 10, 100, 500, 1000]

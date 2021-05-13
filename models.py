@@ -20,15 +20,18 @@ class QuerySchemaEncoder(Model):
         self.query_encoder_dense = tf.keras.models.Sequential()
         self.query_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(config['dim'],)))
         self.query_encoder_dense.add(tf.keras.layers.Dense(config['dim'], activation='relu'))
+        self.query_encoder_dense.add(tf.keras.layers.Dense(config['dim'], activation='relu'))
 
-    def call(self, features):
+    def call(self, features, **kwargs):
         questions, headers, table_words, labels, all_num_cols, masks = features
         table_encodings = self.get_table_embedding(headers, table_words, all_num_cols, masks)
         question_encodings = self.get_query_embedding(questions)
         d = tf.reduce_sum(tf.square(question_encodings - table_encodings), 1)
         d_sqrt = tf.sqrt(d)
-        loss = labels * tf.square(tf.maximum(0., self.margin - d_sqrt)) + (
-                tf.ones(shape=[tf.shape(labels)[0]]) - labels) * d
+        # loss = labels * tf.square(tf.maximum(0., self.margin - d_sqrt)) + (
+        #         tf.ones(shape=[tf.shape(labels)[0]]) - labels) * d
+        loss = labels * d + (tf.ones(shape=[tf.shape(labels)[0]]) - labels) * tf.square(
+            tf.maximum(0., self.margin - d_sqrt))
         loss = 0.5 * tf.reduce_mean(loss)
         return loss
 

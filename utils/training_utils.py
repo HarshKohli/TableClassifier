@@ -2,6 +2,7 @@
 # Date Created: 13-05-2021
 
 import numpy as np
+from utils.embedding_utils import get_query_table_ranks
 
 
 def train_epoch(questions, headers, table_words, labels, all_num_cols, masks, train_iterations, train_step):
@@ -35,3 +36,23 @@ def test_table_encoder(headers, table_words, all_num_cols, masks, table_ids, tab
             table_id_to_index[table_id] = index
             index = index + 1
     return index_to_vec, table_id_to_index
+
+
+def metrics_logger(sample_info_dict, id_to_index, index_file, dim, eval_set, find_p, log_file):
+    ranks = get_query_table_ranks(sample_info_dict, id_to_index, index_file, dim)
+    dp = [0 for _ in range(max(ranks) + 1)]
+    rr = 0
+    for rank in ranks:
+        dp[rank] = dp[rank] + 1
+        rr = rr + 1 / float(rank)
+    mrr = rr / len(ranks)
+    for index in range(1, len(dp)):
+        dp[index] = dp[index] + dp[index - 1]
+    total = dp[-1]
+    p_scores = []
+    for num in dp:
+        p_scores.append(num / float(total))
+    log_file.write(eval_set + '\t' + str(mrr))
+    for p in find_p:
+        log_file.write('\t' + str(p_scores[p]))
+    log_file.write('\n')
