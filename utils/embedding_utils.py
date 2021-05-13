@@ -38,7 +38,8 @@ def get_hardest_negatives(samples_data, train_index, dim):
             close_sample = samples_data[close_index]
             close_id = close_sample['table_id']
             if cur_id != close_id:
-                hardest_negative = {'table_id': cur_id, 'question_tokens': close_sample['question_tokens'], 'label': 0}
+                hardest_negative = {'table_id': cur_id, 'question_tokens': close_sample['question_tokens'],
+                                    'label': 0.0}
                 hardest_negatives.append(hardest_negative)
                 break
     return hardest_negatives

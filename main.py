@@ -6,50 +6,49 @@ import tensorflow as tf
 import os
 import numpy as np
 from models import QuerySchemaEncoder
-from tensorflow.keras.losses import CategoricalCrossentropy
 from utils.data_utils import load_preprocessed_data
 
 print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
-tf.config.run_functions_eagerly(True)
 config = yaml.safe_load(open('config.yml', 'r'))
+tf.config.run_functions_eagerly(config['execute_greedily'])
 
 batch_size = config['batch_size']
 data = load_preprocessed_data(config)
-print('here')
-# train_questions, train_headers, train_table_words, train_labels, train_num_cols, train_masks = create_batches(
-#     train_data, train_tables, config)
-# dev_questions, dev_headers, dev_table_words, dev_labels, dev_num_cols, dev_masks = create_batches(train_data,
-#                                                                                                   train_tables, config)
-# test_questions, test_headers, test_table_words, test_labels, test_num_cols, test_masks = create_batches(train_data,
-#                                                                                                         train_tables,
-#                                                                                                         config)
-# train_iterations, dev_iterations, test_iterations = len(train_questions), len(dev_questions), len(test_questions)
-#
-# model = QuerySchemaEncoder(config)
-# loss_obj = CategoricalCrossentropy()
-# optimizer = tf.keras.optimizers.Adam(learning_rate=3e-5, epsilon=1e-08)
-# save_path = os.path.join(config['model_dir'], config['model_name'])
-#
-#
-# @tf.function
-# def train_step(train_question, train_header, train_table_word, labels):
-#     with tf.GradientTape() as tape:
-#         logits = model([train_question, train_header, train_table_word], training=True)
-#         loss = loss_obj(y_true=labels, y_pred=logits)
-#     gradients = tape.gradient(loss, model.trainable_variables)
-#     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-#     return loss
-#
-#
-# print('Starting Training...')
-# for epoch_num in range(config['num_epochs']):
-#     print('Starting Epoch: ' + str(epoch_num))
-#     for index, (train_question, train_header, train_table_word, train_label) in enumerate(
-#             zip(train_questions, train_headers, train_table_words, train_labels)):
-#         loss = train_step(train_question, train_header, train_table_word, train_label)
-#         if index % 5 == 0:
-#             print('Done ' + str(index) + ' train iterations out of ' + str(train_iterations) + ' Loss is ' + str(
-#                 float(loss.numpy())))
-#         break
-#     print('Completed Epoch. Saving Latest Model...')
-#     tf.saved_model.save(model, save_path + str(epoch_num))
+
+questions, headers, table_words, labels, all_num_cols, masks = data['train_batches']
+train_headers, train_table_words, train_all_num_cols, train_masks = data['train_tables_batches']
+dev_headers, dev_table_words, dev_all_num_cols, dev_masks = data['dev_tables_batches']
+test_headers, test_table_words, test_all_num_cols, test_masks = data['test_tables_batches']
+
+model = QuerySchemaEncoder(config)
+optimizer = tf.keras.optimizers.Adam(learning_rate=config['learning_rate'])
+save_path = os.path.join(config['model_dir'], config['model_name'])
+
+
+@tf.function
+def train_step(question, header, table_word, label, all_num_col, mask):
+    with tf.GradientTape() as tape:
+        loss = model([question, header, table_word, label, all_num_col, mask])
+    gradients = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(
+        (grad, var)
+        for (grad, var) in zip(gradients, model.trainable_variables)
+        if grad is not None
+    )
+    return loss
+
+
+train_iterations = len(questions)
+print('Starting Training...')
+for epoch_num in range(config['num_epochs']):
+    print('Starting Epoch: ' + str(epoch_num))
+    for index, (question, header, table_word, label, all_num_col, mask) in enumerate(
+            zip(questions, headers, table_words, labels, all_num_cols, masks)):
+        a, b, c, d, e, f = np.array(question), np.array(header), np.array(table_word), np.array(label), np.array(
+            all_num_col), np.array(mask)
+        loss = train_step(a, b, c, d, e, f)
+        if index % 100 == 0:
+            print('Done ' + str(index) + ' train iterations out of ' + str(train_iterations) + ' Loss is ' + str(
+                float(loss.numpy())))
+    print('Completed Epoch. Saving Latest Model...')
+    tf.saved_model.save(model, save_path, str(epoch_num))

@@ -4,6 +4,7 @@
 import json
 import pickle
 import random
+import numpy as np
 from utils.embedding_utils import compute_embeddings, index_embeddings, get_hardest_negatives
 from nltk import word_tokenize
 
@@ -29,14 +30,11 @@ def create_train_batches(data, tables, config):
                 b.append(col['words'])
             header.append(a)
             words.append(b)
-            if datum['label'] == 0:
-                label.append([1, 0])
-            else:
-                label.append([0, 1])
-        mask = [[0 for _ in range(max_cols)] for _ in range(len(header))]
+            label.append(datum['label'])
+        mask = [[0.0 for _ in range(max_cols)] for _ in range(len(header))]
         for index2, one_mask in enumerate(mask):
             for index3 in range(num_cols[index2]):
-                one_mask[index3] = 1
+                one_mask[index3] = 1.0
         header = [x + [pad_token] * (max_cols - len(x)) for x in header]
         words = [x + [pad_token] * (max_cols - len(x)) for x in words]
         masks.append(mask)
@@ -68,10 +66,10 @@ def create_tables_batches(tables, config):
                 b.append(col['words'])
             header.append(a)
             words.append(b)
-        mask = [[0 for _ in range(max_cols)] for _ in range(len(header))]
+        mask = [[0.0 for _ in range(max_cols)] for _ in range(len(header))]
         for index2, one_mask in enumerate(mask):
             for index3 in range(num_cols[index2]):
-                one_mask[index3] = 1
+                one_mask[index3] = 1.0
         masks.append(mask)
         all_num_cols.append(num_cols)
         headers.append(header)
@@ -100,7 +98,7 @@ def read_data(data_file, tables_file, real_proxy_token):
         question, table_id = sample['question'], sample['table_id']
         question_tokens = cleanly_tokenize(question)
         all_questions.append(question_tokens)
-        samples_data.append({'table_id': table_id, 'question_tokens': question_tokens, 'label': 1})
+        samples_data.append({'table_id': table_id, 'question_tokens': question_tokens, 'label': 1.0})
     for line in table_file.readlines():
         table = json.loads(line)
         table_id, header, types, rows = table['id'], table['header'], table['types'], table['rows']
@@ -166,7 +164,8 @@ def process_train_data(config, nnlm_embedder, data_file, tables_file):
             random_negative = samples_data[random_index]
             if random_negative['table_id'] != sample['table_id']:
                 random_negatives.append(
-                    {'table_id': random_negative['table_id'], 'question_tokens': sample['question_tokens'], 'label': 0})
+                    {'table_id': random_negative['table_id'], 'question_tokens': sample['question_tokens'],
+                     'label': 0.0})
     samples_data.extend(hardest_negatives)
     samples_data.extend(random_negatives)
     random.shuffle(samples_data)

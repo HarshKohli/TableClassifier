@@ -6,7 +6,7 @@ test_data: dataset/test.jsonl
 test_tables: dataset/test.tables.jsonl
 preprocessed_data_path: preprocessed/all_data.pickle
 tf_hub_model: https://tfhub.dev/google/nnlm-en-dim128/2
-batch_size: 256
+batch_size: 128
 real_proxy_token: <unk>
 pad_token: <pad>
 num_epochs: 50
@@ -15,3 +15,6 @@ include_hardest_negatives: True
 include_random_negatives: True
 model_dir: saved_models
 model_name: test
+contrastive_loss_margin: 0.5
+learning_rate: 0.0001
+execute_greedily: False

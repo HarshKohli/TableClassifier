@@ -10,37 +10,45 @@ class QuerySchemaEncoder(Model):
     def __init__(self, config):
         super(QuerySchemaEncoder, self).__init__()
         self.nnlm_embedder = hub.load(config['tf_hub_model'])
+        self.margin = config['contrastive_loss_margin']
 
         self.table_encoder_dense = tf.keras.models.Sequential()
-        self.table_encoder_dense.add(tf.keras.Input(shape=(256,)))
+        self.table_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(256,)))
         self.table_encoder_dense.add(tf.keras.layers.Dense(192, activation='relu'))
         self.table_encoder_dense.add(tf.keras.layers.Dense(128, activation='relu'))
 
         self.query_encoder_dense = tf.keras.models.Sequential()
-        self.query_encoder_dense.add(tf.keras.Input(shape=(128,)))
+        self.query_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(128,)))
         self.query_encoder_dense.add(tf.keras.layers.Dense(128, activation='relu'))
 
-        self.output_layers = tf.keras.models.Sequential()
-        self.output_layers.add(tf.keras.Input(shape=(256,)))
-        self.output_layers.add(tf.keras.layers.Dense(128, activation='relu'))
-        self.output_layers.add(tf.keras.layers.Dense(64, activation='relu'))
-        self.output_layers.add(tf.keras.layers.Dense(32, activation='relu'))
-        self.output_layers.add(tf.keras.layers.Dense(2, activation='softmax'))
+    def call(self, features):
+        questions, headers, table_words, labels, all_num_cols, masks = features
+        table_encodings = self.get_table_embedding(headers, table_words, all_num_cols, masks)
+        question_encodings = self.get_query_embedding(questions)
+        d = tf.reduce_sum(tf.square(question_encodings - table_encodings), 1)
+        d_sqrt = tf.sqrt(d)
+        loss = labels * tf.square(tf.maximum(0., self.margin - d_sqrt)) + (
+                tf.ones(shape=[tf.shape(labels)[0]]) - labels) * d
+        loss = 0.5 * tf.reduce_mean(loss)
+        return loss
 
-    def call(self, features, training):
-        questions, headers, table_words = features
+    def get_table_embedding(self, headers, table_words, all_num_cols, masks):
+        header_embeddings = self.nnlm_embedder(tf.reshape(headers, [-1]))
+        table_word_embeddings = self.nnlm_embedder(tf.reshape(table_words, [-1]))
+        table_encodings = self.table_encoder_dense(tf.concat((header_embeddings, table_word_embeddings), axis=1))
+        table_encodings = tf.reshape(table_encodings, [tf.shape(table_words)[0], tf.shape(table_words)[1], -1])
+        expanded_masks = tf.expand_dims(masks, -1)
+        masks_broadcasted = tf.broadcast_to(expanded_masks,
+                                            shape=[tf.shape(table_encodings)[0], tf.shape(table_encodings)[1],
+                                                   tf.shape(table_encodings)[2]])
+        table_encodings = tf.math.multiply(table_encodings, masks_broadcasted)
+        table_encodings = tf.math.reduce_sum(table_encodings, axis=1)
+        num_cols_normalized = tf.broadcast_to(tf.expand_dims(tf.dtypes.cast(all_num_cols, tf.float32), -1),
+                                              shape=[tf.shape(table_encodings)[0], tf.shape(table_encodings)[1]])
+        table_encodings = tf.math.divide(table_encodings, num_cols_normalized)
+        return table_encodings
 
-        table_encodings = []
-        for train_header, train_table_word in zip(headers, table_words):
-            header_embedding = self.nnlm_embedder(train_header)
-            word_embedding = self.nnlm_embedder(train_table_word)
-            dense_output_1 = self.table_encoder_dense(tf.concat((header_embedding, word_embedding), axis=1))
-            dense_output_1 = tf.math.reduce_mean(dense_output_1, axis=0)
-            table_encodings.append(dense_output_1)
-        table_encodings = tf.convert_to_tensor(table_encodings)
-
-        query_embeddings = self.nnlm_embedder(questions)
-        query_encodings = self.query_encoder_dense(query_embeddings)
-
-        output_prob = self.output_layers(tf.concat((table_encodings, query_encodings), axis=1))
-        return output_prob
+    def get_query_embedding(self, questions):
+        question_embeddings = self.nnlm_embedder(questions)
+        return self.query_encoder_dense(question_embeddings)
+        #return question_embeddings
