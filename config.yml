@@ -9,12 +9,12 @@ tf_hub_model: https://tfhub.dev/google/Wiki-words-500/2
 batch_size: 128
 real_proxy_token: <real>
 pad_token: <pad>
-num_epochs: 10
+num_epochs: 50
 train_index: ann_index/train_ann_index.ann
 include_hardest_negatives: True
 include_random_negatives: True
 model_dir: saved_models
-model_name: test
+model_name: hardest_plus_random_bow
 contrastive_loss_margin: 0.5
 learning_rate: 0.0001
 execute_greedily: False
@@ -24,4 +24,5 @@ train_tables_index: train_tables.ann
 dev_tables_index: dev_tables.ann
 test_tables_index: test_tables.ann
 dim: 500
-find_p: [1, 10, 100, 500, 1000]
+find_p: [ 1, 5, 10, 50, 100 ]
+use_in_domain_test: False

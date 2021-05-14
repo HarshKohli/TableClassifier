@@ -18,7 +18,8 @@ model_name = config['model_name']
 data = load_preprocessed_data(config)
 
 questions, headers, table_words, labels, all_num_cols, masks = data['train_batches']
-train_headers, train_table_words, train_all_num_cols, train_masks, train_table_ids = data['train_tables_batches']
+if config['use_in_domain_test']:
+    train_headers, train_table_words, train_all_num_cols, train_masks, train_table_ids = data['train_tables_batches']
 dev_headers, dev_table_words, dev_all_num_cols, dev_masks, dev_table_ids = data['dev_tables_batches']
 test_headers, test_table_words, test_all_num_cols, test_masks, test_table_ids = data['test_tables_batches']
 
@@ -65,13 +66,14 @@ for epoch_num in range(config['num_epochs']):
     dev_index = os.path.join(index_dir, config['dev_tables_index'])
     test_index = os.path.join(index_dir, config['test_tables_index'])
 
-    print('Computing In-Domain Query Embeddings...')
-    indomain_sample_info_dict = test_query_encoder(data['in_domain_test_batches'], query_embedding_step)
-    print('Computing Train Table Embeddings...')
-    train_index_to_vec, train_id_to_index = test_table_encoder(train_headers, train_table_words, train_all_num_cols,
-                                                               train_masks, train_table_ids, table_embedding_step)
-    print('Indexing Train Table Embeddings...')
-    index_embeddings(train_index_to_vec, train_index, dim)
+    if config['use_in_domain_test']:
+        print('Computing In-Domain Query Embeddings...')
+        indomain_sample_info_dict = test_query_encoder(data['in_domain_test_batches'], query_embedding_step)
+        print('Computing Train Table Embeddings...')
+        train_index_to_vec, train_id_to_index = test_table_encoder(train_headers, train_table_words, train_all_num_cols,
+                                                                   train_masks, train_table_ids, table_embedding_step)
+        print('Indexing Train Table Embeddings...')
+        index_embeddings(train_index_to_vec, train_index, dim)
 
     print('Computing Dev Query Embeddings...')
     dev_sample_info_dict = test_query_encoder(data['dev_samples_batches'], query_embedding_step)
@@ -98,7 +100,9 @@ for epoch_num in range(config['num_epochs']):
     for p in p_req:
         log_file.write('\tP@' + str(p))
     log_file.write('\n')
-    metrics_logger(indomain_sample_info_dict, train_id_to_index, train_index, dim, 'in_domain_test', p_req, log_file)
+    if config['use_in_domain_test']:
+        metrics_logger(indomain_sample_info_dict, train_id_to_index, train_index, dim, 'in_domain_test', p_req,
+                       log_file)
     metrics_logger(dev_sample_info_dict, dev_id_to_index, dev_index, dim, 'dev', p_req, log_file)
     metrics_logger(test_sample_info_dict, test_id_to_index, test_index, dim, 'test', p_req, log_file)
     log_file.close()

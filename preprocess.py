@@ -15,8 +15,9 @@ print('Processing Train Data...')
 train_data, train_tables, in_domain_test = process_train_data(config, nnlm_embedder, config['train_data'],
                                                               config['train_tables'])
 train_batches = create_train_batches(train_data, train_tables, config)
-train_tables_batches = create_tables_batches(train_tables, config)
-in_domain_test_batches = create_samples_batches(in_domain_test, batch_size)
+if config['use_in_domain_test']:
+    train_tables_batches = create_tables_batches(train_tables, config)
+    in_domain_test_batches = create_samples_batches(in_domain_test, batch_size)
 
 print('Processing Dev Data...')
 dev_data, dev_tables, _ = read_data(config['dev_data'], config['dev_tables'], config['real_proxy_token'])
@@ -30,13 +31,15 @@ test_tables_batches = create_tables_batches(test_tables, config)
 
 all_data = {
     'train_batches': train_batches,
-    'train_tables_batches': train_tables_batches,
-    'in_domain_test_batches': in_domain_test_batches,
     'dev_samples_batches': dev_samples_batches,
     'dev_tables_batches': dev_tables_batches,
     'test_samples_batches': test_samples_batches,
     'test_tables_batches': test_tables_batches
 }
+
+if config['use_in_domain_test']:
+    all_data['train_tables_batches'] = train_tables_batches
+    all_data['in_domain_test_batches'] = in_domain_test_batches
 
 pickle_file = open(config['preprocessed_data_path'], 'wb')
 pickle.dump(all_data, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)

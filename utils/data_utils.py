@@ -149,7 +149,10 @@ def isolate_in_domain_test(samples_data, all_questions):
 def process_train_data(config, nnlm_embedder, data_file, tables_file):
     train_index = config['train_index']
     samples_data, tables_data, all_questions = read_data(data_file, tables_file, config['real_proxy_token'])
-    samples_data, all_questions, in_domain_test = isolate_in_domain_test(samples_data, all_questions)
+    if config['use_in_domain_test']:
+        samples_data, all_questions, in_domain_test = isolate_in_domain_test(samples_data, all_questions)
+    else:
+        in_domain_test = None
     embeddings = compute_embeddings(all_questions, nnlm_embedder, config['batch_size'])
     index, id2_embed, id2_question = 0, {}, {}
     for embedding, sample in zip(embeddings, samples_data):
