@@ -179,6 +179,7 @@ def process_train_data(config, nnlm_embedder, data_file, tables_file):
 
 
 def cleanly_tokenize(text):
+    text = text.lower()
     tokens = word_tokenize(
         text.lower().replace("-", " - ").replace('–', ' – ').replace("''", '" ').replace("``", '" ').replace("/",
                                                                                                              " / "))
