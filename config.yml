@@ -6,7 +6,7 @@ test_data: dataset/test.jsonl
 test_tables: dataset/test.tables.jsonl
 preprocessed_data_path: dataset/all_data.pickle
 tf_hub_model: https://tfhub.dev/google/Wiki-words-500/2
-batch_size: 128
+batch_size: 32
 real_proxy_token: <real>
 pad_token: <pad>
 num_epochs: 50
@@ -14,10 +14,10 @@ train_index: ann_index/train_ann_index.ann
 include_hardest_negatives: True
 include_random_negatives: True
 model_dir: saved_models
-model_name: hardest_plus_random_bow
+model_name: hardest_plus_random_bow_w_char_embed
 contrastive_loss_margin: 0.5
 learning_rate: 0.0001
-execute_greedily: False
+execute_greedily: True
 index_dir: ann_index
 log_dir: logs
 train_tables_index: train_tables.ann
@@ -26,3 +26,6 @@ test_tables_index: test_tables.ann
 dim: 500
 find_p: [ 1, 5, 10, 50, 100 ]
 use_in_domain_test: False
+use_char_embedding: True
+char_embedding_dim: 200
+character_vocab: [ '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.','/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<','=', '>', '?', '@', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i','j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w','x', 'y', 'z' ]
