@@ -33,10 +33,17 @@ class QuerySchemaEncoder(Model):
         self.table_encoder_dense.add(tf.keras.layers.Dense(1.5 * dim, activation='relu'))
         self.table_encoder_dense.add(tf.keras.layers.Dense(dim, activation='relu'))
 
-        self.query_encoder_dense = tf.keras.models.Sequential()
-        self.query_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(dim,)))
-        self.query_encoder_dense.add(tf.keras.layers.Dense(dim, activation='relu'))
-        self.query_encoder_dense.add(tf.keras.layers.Dense(dim, activation='relu'))
+        self.use_lstm_query_encoder = config['use_lstm_query_encoder']
+
+        if self.use_lstm_query_encoder:
+            self.query_encoder = tf.keras.models.Sequential()
+            self.query_encoder.add(tf.keras.layers.LSTM(dim, activation='relu'))
+
+        else:
+            self.query_encoder = tf.keras.models.Sequential()
+            self.query_encoder.add(tf.keras.layers.InputLayer(input_shape=(dim,)))
+            self.query_encoder.add(tf.keras.layers.Dense(dim, activation='relu'))
+            self.query_encoder.add(tf.keras.layers.Dense(dim, activation='relu'))
 
     def call(self, features, **kwargs):
         questions, headers, table_words, labels, all_num_cols, masks = features
@@ -74,8 +81,11 @@ class QuerySchemaEncoder(Model):
         return table_encodings
 
     def get_query_embedding(self, questions):
-        question_embeddings = self.nnlm_embedder(questions)
-        question_embeddings = self.query_encoder_dense(question_embeddings)
+        if self.use_lstm_query_encoder:
+            question_embeddings = self.get_lstm_word_embeddings(questions)
+        else:
+            question_embeddings = self.nnlm_embedder(questions)
+            question_embeddings = self.query_encoder(question_embeddings)
 
         if self.use_char_embed:
             question_char_embeddings = self.get_char_embeddings(tf.reshape(questions, [-1]))
@@ -84,13 +94,18 @@ class QuerySchemaEncoder(Model):
 
         return question_embeddings
 
+    def get_lstm_word_embeddings(self, text):
+        tokenized = tf.strings.split(text)
+        tokenized_lengths = tf.reshape(tf.map_fn(tf.shape, tokenized, fn_output_signature=tf.int32), [-1])
+        word_encoded = self.nnlm_embedder(tokenized.flat_values)
+        reshaped_word_embeddings = tf.RaggedTensor.from_row_lengths(word_encoded, tokenized_lengths)
+        return self.query_encoder(reshaped_word_embeddings)
+
     def get_char_embeddings(self, text):
         tokenized = tf.strings.split(text)
         tokenized_lengths = tf.reshape(tf.map_fn(tf.shape, tokenized, fn_output_signature=tf.int32), [-1])
-        tokenized_flat = tokenized.flat_values
-        chars = tf.strings.unicode_split(tokenized_flat, input_encoding='UTF-8')
+        chars = tf.strings.unicode_split(tokenized.flat_values, input_encoding='UTF-8')
         ids = self.ids_from_chars(chars)
         char_encoded = self.char_encoder(ids)
         reshaped_char_embeds = tf.RaggedTensor.from_row_lengths(char_encoded, tokenized_lengths)
-        final_char_embeddings = tf.math.reduce_mean(reshaped_char_embeds, axis=1)
-        return final_char_embeddings
+        return tf.math.reduce_mean(reshaped_char_embeds, axis=1)
