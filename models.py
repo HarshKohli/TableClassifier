@@ -78,6 +78,7 @@ class QuerySchemaEncoder(Model):
         num_cols_normalized = tf.broadcast_to(tf.expand_dims(tf.dtypes.cast(all_num_cols, tf.float32), -1),
                                               shape=[tf.shape(table_encodings)[0], tf.shape(table_encodings)[1]])
         table_encodings = tf.math.divide(table_encodings, num_cols_normalized)
+        table_encodings = tf.math.l2_normalize(table_encodings, axis=1)
         return table_encodings
 
     def get_query_embedding(self, questions):
@@ -92,6 +93,7 @@ class QuerySchemaEncoder(Model):
             question_embeddings = self.char_word_combiner(tf.concat((question_embeddings, question_char_embeddings),
                                                                     axis=1))
 
+        question_embeddings = tf.math.l2_normalize(question_embeddings, axis=1)
         return question_embeddings
 
     def get_lstm_word_embeddings(self, text):
