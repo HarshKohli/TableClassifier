@@ -1,6 +1,7 @@
 # Author: Harsh Kohli
 # Date Created: 13-05-2021
 
+import os
 import numpy as np
 from utils.embedding_utils import get_query_table_ranks
 
@@ -38,8 +39,7 @@ def test_table_encoder(headers, table_words, all_num_cols, masks, table_ids, tab
     return index_to_vec, table_id_to_index
 
 
-def metrics_logger(sample_info_dict, id_to_index, index_file, dim, eval_set, find_p, log_file):
-    ranks = get_query_table_ranks(sample_info_dict, id_to_index, index_file, dim)
+def get_metrics(ranks):
     dp = [0 for _ in range(max(ranks) + 1)]
     rr = 0
     for rank in ranks:
@@ -52,7 +52,26 @@ def metrics_logger(sample_info_dict, id_to_index, index_file, dim, eval_set, fin
     p_scores = []
     for num in dp:
         p_scores.append(num / float(total))
+    return mrr, p_scores
+
+
+def metrics_logger(sample_info_dict, id_to_index, index_file, dim, eval_set, find_p, log_file):
+    ranks = get_query_table_ranks(sample_info_dict, id_to_index, index_file, dim)
+    mrr, p_scores = get_metrics(ranks)
     log_file.write(eval_set + '\t' + str(mrr))
     for p in find_p:
         log_file.write('\t' + str(p_scores[p]))
+    log_file.write('\n')
+
+
+def baseline_metrics_logger(dev_ranks, test_ranks, log_file, find_p):
+    mrr_dev, p_scores_dev = get_metrics(dev_ranks)
+    mrr_test, p_scores_test = get_metrics(test_ranks)
+    log_file.write('dev' + '\t' + str(mrr_dev))
+    for p in find_p:
+        log_file.write('\t' + str(p_scores_dev[p]))
+    log_file.write('\n')
+    log_file.write('test' + '\t' + str(mrr_test))
+    for p in find_p:
+        log_file.write('\t' + str(p_scores_test[p]))
     log_file.write('\n')

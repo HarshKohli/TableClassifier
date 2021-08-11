@@ -12,6 +12,10 @@ run python main.py
 
 The flag execute_greedily might have to be set to True in some training experiments (when using Character Embeddings or LSTM)
 
+For baseline results:
+
+run python evaluate_baseline.py
+
 # Dependencies
 
 pyyaml
@@ -19,6 +23,8 @@ pyyaml
 tensorflow
 
 tensorflow-hub
+
+gensim==3.8.3
 
 # Configuring Experiments
 

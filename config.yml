@@ -15,6 +15,7 @@ include_hardest_negatives: True
 include_random_negatives: True
 model_dir: saved_models
 model_name: hardest_plus_random_bow
+baseline_name: bm25_baseline
 contrastive_loss_margin: 0.5
 learning_rate: 0.0001
 execute_greedily: False

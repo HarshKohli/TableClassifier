@@ -4,6 +4,8 @@
 import json
 import pickle
 import random
+from gensim import corpora
+from gensim.summarization import bm25
 from utils.embedding_utils import compute_embeddings, index_embeddings, get_hardest_negatives
 from nltk import word_tokenize
 
@@ -176,6 +178,46 @@ def process_train_data(config, nnlm_embedder, data_file, tables_file):
     samples_data.extend(random_negatives)
     random.shuffle(samples_data)
     return samples_data, tables_data, in_domain_test
+
+
+def get_table_words(tables):
+    docs, id_to_index = [], {}
+    for index, (id, info) in enumerate(tables.items()):
+        doc = []
+        for col in info:
+            doc = col['header'].split()
+            doc.extend(col['words'].split())
+        docs.append(doc)
+        id_to_index[id] = index
+    return docs, id_to_index
+
+
+def get_ranks_baseline(data, tables):
+    texts, id_to_index = get_table_words(tables)
+    dictionary = corpora.Dictionary(texts)
+    corpus = [dictionary.doc2bow(text) for text in texts]
+    bm25_obj = bm25.BM25(corpus)
+    ranks, num_samples = [], len(data)
+    for count, one_data in enumerate(data):
+        id, query = one_data['table_id'], one_data['question_tokens']
+        query_doc = dictionary.doc2bow(query.split())
+        scores = bm25_obj.get_scores(query_doc)
+        score_tuples = [(score, i) for i, score in enumerate(scores)]
+        score_tuples.sort(reverse=True)
+        target_index = id_to_index[id]
+        rank = -1
+        for index, tup in enumerate(score_tuples):
+            cur_index = tup[1]
+            if cur_index == target_index:
+                rank = index + 1
+                break
+        if rank != -1:
+            ranks.append(rank)
+        else:
+            print('Invalid baseline input')
+        if count % 100 == 0:
+            print('Done ' + str(count) + ' out of ' + str(num_samples) + ' inputs')
+    return ranks
 
 
 def cleanly_tokenize(text):
