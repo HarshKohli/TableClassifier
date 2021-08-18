@@ -59,3 +59,21 @@ def get_query_table_ranks(sample_info_dict, id_to_index, index_file, dim):
         rank = closest_tables.index(table_index) + 1
         ranks.append(rank)
     return ranks
+
+
+def get_top_k_tables(sample_info_dict, id_to_index, index_file, dim, k):
+    u = AnnoyIndex(dim, 'angular')
+    u.load(index_file)
+    ranks, top_k = [], {}
+    for sentence, info in sample_info_dict.items():
+        table_id, embedding = info['table_id'], info['embedding']
+        table_index = id_to_index[table_id]
+        closest_tables = u.get_nns_by_vector(embedding, 1000000)
+        rank = closest_tables.index(table_index)
+        if rank < k:
+            label = [0 for _ in range(k)]
+            label[rank] = 1
+            info['top_k'] = closest_tables[:k]
+            info['labels'] = label
+        ranks.append(rank)
+    return ranks

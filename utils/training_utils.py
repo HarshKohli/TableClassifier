@@ -1,7 +1,6 @@
 # Author: Harsh Kohli
 # Date Created: 13-05-2021
 
-import os
 import numpy as np
 from utils.embedding_utils import get_query_table_ranks
 
@@ -31,7 +30,8 @@ def test_table_encoder(headers, table_words, all_num_cols, masks, table_ids, tab
     index = 0
     index_to_vec, table_id_to_index = {}, {}
     for a, b, c, d, e in zip(headers, table_words, all_num_cols, masks, table_ids):
-        table_encodings = table_embedding_step(np.array(a), np.array(b), np.array(c), np.array(d)).numpy()
+        table_encodings = table_embedding_step(np.array(a), np.array(b), np.array(c),
+                                               np.array(d, dtype=np.float32)).numpy()
         for table_id, encoding in zip(e, table_encodings):
             index_to_vec[index] = encoding
             table_id_to_index[table_id] = index

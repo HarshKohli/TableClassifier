@@ -15,8 +15,12 @@ print('Processing Train Data...')
 train_data, train_tables, in_domain_test = process_train_data(config, nnlm_embedder, config['train_data'],
                                                               config['train_tables'])
 train_batches = create_train_batches(train_data, train_tables, config)
+
+train_data, train_tables, _ = read_data(config['dev_data'], config['dev_tables'], config['real_proxy_token'])
+train_samples_batches = create_samples_batches(train_data, batch_size)
+train_tables_batches = create_tables_batches(train_tables, config)
+
 if config['use_in_domain_test']:
-    train_tables_batches = create_tables_batches(train_tables, config)
     in_domain_test_batches = create_samples_batches(in_domain_test, batch_size)
 
 print('Processing Dev Data...')
@@ -34,7 +38,9 @@ all_data = {
     'dev_samples_batches': dev_samples_batches,
     'dev_tables_batches': dev_tables_batches,
     'test_samples_batches': test_samples_batches,
-    'test_tables_batches': test_tables_batches
+    'test_tables_batches': test_tables_batches,
+    'train_tables_batches': train_tables_batches,
+    'train_samples_batches': train_samples_batches
 }
 
 if config['use_in_domain_test']:

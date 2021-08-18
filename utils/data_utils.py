@@ -15,17 +15,15 @@ def create_train_batches(data, tables, config):
     batches = [data[i * batch_size:(i + 1) * batch_size] for i in
                range((len(data) + batch_size - 1) // batch_size)]
     questions, headers, table_words, labels, all_num_cols, masks = [], [], [], [], [], []
+    max_cols = config['max_cols']
     for index, batch in enumerate(batches):
         question, header, words, label, num_cols = [], [], [], [], []
-        max_cols = 0
         for datum in batch:
             question.append(datum['question_tokens'])
             table_info = tables[datum['table_id']]
             a, b = [], []
             num_col = len(table_info)
             num_cols.append(num_col)
-            if num_col > max_cols:
-                max_cols = num_col
             for col in table_info:
                 a.append(col['header'])
                 b.append(col['words'])
@@ -53,15 +51,13 @@ def create_tables_batches(tables, config):
     batches = [tables_list[i * batch_size:(i + 1) * batch_size] for i in
                range((len(tables_list) + batch_size - 1) // batch_size)]
     headers, table_words, all_num_cols, masks, all_table_ids = [], [], [], [], []
+    max_cols = config['max_cols']
     for index, batch in enumerate(batches):
         header, words, label, num_cols, table_ids = [], [], [], [], []
-        max_cols = 0
         for table_id, table_info in batch:
             a, b = [], []
             num_col = len(table_info)
             num_cols.append(num_col)
-            if num_col > max_cols:
-                max_cols = num_col
             for col in table_info:
                 a.append(col['header'])
                 b.append(col['words'])
@@ -226,3 +222,13 @@ def cleanly_tokenize(text):
         text.lower().replace("-", " - ").replace('–', ' – ').replace("''", '" ').replace("``", '" ').replace("/",
                                                                                                              " / "))
     return " ".join(tokens)
+
+
+def create_ptrnet_dataset(info_dict, batch_size):
+    dataset = []
+    for sentence, info in info_dict.items():
+        if 'top_k' in info:
+            dataset.append([sentence, info['embedding'], info['top_k'], info['labels']])
+    batches = [dataset[i * batch_size:(i + 1) * batch_size] for i in
+               range((len(dataset) + batch_size - 1) // batch_size)]
+    return batches

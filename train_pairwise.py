@@ -59,7 +59,7 @@ for epoch_num in range(config['num_epochs']):
     print('Starting Epoch: ' + str(epoch_num))
     train_epoch(questions, headers, table_words, labels, all_num_cols, masks, train_iterations, train_step)
     print('Completed Epoch. Saving Latest Model...')
-    tf.saved_model.save(model, os.path.join(save_path, str(epoch_num)))
+    tf.keras.models.save_model(model, os.path.join(save_path, str(epoch_num)))
 
     index_dir = os.path.join(config['index_dir'], model_name, str(epoch_num))
     train_index = os.path.join(index_dir, config['train_tables_index'])

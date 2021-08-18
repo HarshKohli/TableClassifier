@@ -56,6 +56,7 @@ class QuerySchemaEncoder(Model):
         loss = 0.5 * tf.reduce_mean(loss)
         return loss
 
+    @tf.function
     def get_table_embedding(self, headers, table_words, all_num_cols, masks):
         header_embeddings = self.nnlm_embedder(tf.reshape(headers, [-1]))
         table_word_embeddings = self.nnlm_embedder(tf.reshape(table_words, [-1]))
@@ -81,6 +82,7 @@ class QuerySchemaEncoder(Model):
         table_encodings = tf.math.l2_normalize(table_encodings, axis=1)
         return table_encodings
 
+    @tf.function
     def get_query_embedding(self, questions):
         if self.use_lstm_query_encoder:
             question_embeddings = self.get_lstm_word_embeddings(questions)
