@@ -15,7 +15,7 @@ tf.config.run_functions_eagerly(config['execute_greedily'])
 
 batch_size = config['batch_size']
 model_name = config['model_name']
-data = load_preprocessed_data(config)
+data = load_preprocessed_data(config['preprocessed_data_path'])
 
 questions, headers, table_words, labels, all_num_cols, masks = data['train_batches']
 if config['use_in_domain_test']:

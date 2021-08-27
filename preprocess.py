@@ -16,7 +16,6 @@ train_data, train_tables, in_domain_test = process_train_data(config, nnlm_embed
                                                               config['train_tables'])
 train_batches = create_train_batches(train_data, train_tables, config)
 
-train_data, train_tables, _ = read_data(config['dev_data'], config['dev_tables'], config['real_proxy_token'])
 train_samples_batches = create_samples_batches(train_data, batch_size)
 train_tables_batches = create_tables_batches(train_tables, config)
 

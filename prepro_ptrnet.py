@@ -16,7 +16,7 @@ tf.config.run_functions_eagerly(config['execute_greedily'])
 model_name = config['best_model']
 dim, k, batch_size = config['dim'], config['top_k'], config['ptrnet_batch_size']
 
-data = load_preprocessed_data(config)
+data = load_preprocessed_data(config['preprocessed_data_path'])
 train_headers, train_table_words, train_all_num_cols, train_masks, train_table_ids = data['train_tables_batches']
 dev_headers, dev_table_words, dev_all_num_cols, dev_masks, dev_table_ids = data['dev_tables_batches']
 test_headers, test_table_words, test_all_num_cols, test_masks, test_table_ids = data['test_tables_batches']

@@ -17,11 +17,13 @@ include_hardest_negatives: True
 include_random_negatives: True
 model_dir: saved_models
 model_name: hardest_plus_random_bow
+ptrnet_model_name: ptrnet_model
 best_model: HR_BOW
 baseline_name: bm25_baseline
 contrastive_loss_margin: 0.5
-learning_rate: 0.001
-execute_greedily: False
+learning_rate: 0.0001
+seq_decoding_iterations: 1
+execute_greedily: True
 index_dir: ann_index
 log_dir: logs
 train_tables_index: train_tables.ann

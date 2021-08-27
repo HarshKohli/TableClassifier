@@ -84,8 +84,8 @@ def create_samples_batches(samples, batch_size):
     return batches
 
 
-def load_preprocessed_data(config):
-    serialized_data_file = open(config['preprocessed_data_path'], 'rb')
+def load_preprocessed_data(filepath):
+    serialized_data_file = open(filepath, 'rb')
     data = pickle.load(serialized_data_file)
     return data
 

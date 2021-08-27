@@ -16,6 +16,23 @@ def train_epoch(questions, headers, table_words, labels, all_num_cols, masks, tr
                 float(loss.numpy())))
 
 
+def train_epoch_ptrnet(train_batches, train_index_to_vec, train_iterations, train_step):
+    for index, batch in enumerate(train_batches):
+        query = [x[1] for x in batch]
+        tables = []
+        for elem in batch:
+            table = []
+            for one_elem in elem[2]:
+                table.append(train_index_to_vec[one_elem])
+            tables.append(table)
+        labels = [x[3] for x in batch]
+        a, b, c = np.array(query), np.array(tables), np.array(labels, dtype=np.float32)
+        loss = train_step(a, b, c)
+        if index % 1 == 0:
+            print('Done ' + str(index) + ' train iterations out of ' + str(train_iterations) + ' Loss is ' + str(
+                float(loss.numpy())))
+
+
 def test_query_encoder(batches, query_embedding_step):
     sample_info_dict = {}
     for test_batch in batches:

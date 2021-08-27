@@ -113,3 +113,81 @@ class QuerySchemaEncoder(Model):
         char_encoded = self.char_encoder(ids)
         reshaped_char_embeds = tf.RaggedTensor.from_row_lengths(char_encoded, tokenized_lengths)
         return tf.math.reduce_mean(reshaped_char_embeds, axis=1)
+
+
+class PointingNetworkDecoder(Model):
+    def __init__(self, config):
+        super(PointingNetworkDecoder, self).__init__()
+        dim = config['dim']
+        initializer = tf.keras.initializers.GlorotUniform()
+        self.num_tables = config['top_k']
+        self.decoding_iterations = config['seq_decoding_iterations']
+
+        self.table_encoder_dense = tf.keras.models.Sequential()
+        self.table_encoder_dense.add(tf.keras.layers.InputLayer(input_shape=(2 * dim,)))
+        self.table_encoder_dense.add(tf.keras.layers.Dense(1.5 * dim, activation='relu', kernel_initializer=initializer))
+        self.table_encoder_dense.add(tf.keras.layers.Dense(dim, activation='relu', kernel_initializer=initializer))
+
+        self.decoding_mlp = tf.keras.models.Sequential()
+        self.decoding_mlp.add(tf.keras.layers.InputLayer(input_shape=(4 * dim,)))
+        self.decoding_mlp.add(tf.keras.layers.Dense(2 * dim, activation='relu', kernel_initializer=initializer))
+        self.decoding_mlp.add(tf.keras.layers.Dense(dim, activation='relu', kernel_initializer=initializer))
+        self.decoding_mlp.add(tf.keras.layers.Dense(1, activation='relu', kernel_initializer=initializer))
+
+        self.decoding_lstm_cell = tf.keras.layers.LSTMCell(2 * dim, activation='relu', kernel_initializer=initializer)
+
+    def call(self, features, **kwargs):
+        query, tables, labels = features
+        query_expanded = tf.broadcast_to(tf.expand_dims(query, axis=1), shape=tf.shape(tables))
+        query_table_combined = tf.concat((tables, query_expanded), axis=2)
+        query_table_combined = tf.reshape(query_table_combined, shape=[-1, tf.shape(query_table_combined)[2]])
+        query_aware_table_rep = self.table_encoder_dense(query_table_combined)
+        query_aware_table_rep = tf.reshape(query_aware_table_rep, shape=[tf.shape(tables)[0], tf.shape(tables)[1], -1])
+        logits, output_pointers = self.iterative_pointing_decoder(query_aware_table_rep)
+
+        if not kwargs['training']:
+            return logits[-1]
+
+        ce_loss = tf.zeros(shape=[tf.shape(labels)[0]])
+        for logit in logits:
+            ce_loss = ce_loss + tf.nn.softmax_cross_entropy_with_logits(labels, logit)
+        ce_loss = tf.reduce_mean(ce_loss)
+        return ce_loss
+
+    def decoding_step(self, query_aware_suggestions, input_shape, output, pointer_encodings):
+        suggestions_flattened = tf.reshape(query_aware_suggestions, shape=[-1, input_shape[2]])
+        output_broadcasted = tf.tile(output, (input_shape[1], 1))
+        pointer_encodings_broadcasted = tf.tile(pointer_encodings, (input_shape[1], 1))
+        suggestion_scores = self.decoding_mlp(
+            tf.concat((suggestions_flattened, output_broadcasted, pointer_encodings_broadcasted), axis=1))
+        suggestion_scores = tf.reshape(suggestion_scores, shape=[input_shape[0], -1])
+        return tf.nn.softmax(suggestion_scores)
+
+    def iterative_pointing_decoder(self, query_aware_table_reps):
+        input_shape = tf.shape(query_aware_table_reps)
+        batch_size = input_shape[0]
+        output_pointers = tf.broadcast_to(tf.cast(self.num_tables / 2, tf.int32), shape=[batch_size])
+        state = self.decoding_lstm_cell.get_initial_state(batch_size=batch_size, dtype=tf.float32)
+        not_settled = tf.tile([True], (batch_size,))
+        logits = []
+        for iteration in range(self.decoding_iterations):
+            pointer_encodings = tf.gather_nd(query_aware_table_reps,
+                                             tf.stack([tf.range(batch_size), output_pointers], axis=1))
+            output, state = self.decoding_lstm_cell(pointer_encodings, state)
+            if iteration == 0:
+                suggestion_scores = self.decoding_step(query_aware_table_reps, input_shape, output, pointer_encodings)
+            else:
+                prev_scores = logits[iteration - 1]
+                suggestion_scores = tf.cond(pred=tf.reduce_any(input_tensor=not_settled),
+                                            true_fn=lambda: self.decoding_step(query_aware_table_reps, input_shape,
+                                                                               output, pointer_encodings),
+                                            false_fn=lambda: prev_scores)
+            new_pointers = tf.cast(tf.math.argmax(suggestion_scores, axis=1), dtype=tf.int32)
+            if iteration == 0:
+                not_settled = tf.tile([True], (batch_size,))
+            else:
+                not_settled = tf.math.not_equal(output_pointers, new_pointers)
+            output_pointers = new_pointers
+            logits.append(suggestion_scores)
+
+        return logits, output_pointers
